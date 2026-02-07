@@ -33,13 +33,13 @@ const RECENT_MAX = 4;
 const FIREBASE_ENABLED = true;
 
 const firebaseConfig = {
- apiKey: "AIzaSyBnIwX-F4YoxXW4gatIwvJD-NF23XcdwaI",
-  authDomain: "sturdy-device-485320-s2.firebaseapp.com",
-  projectId: "sturdy-device-485320-s2",
-  storageBucket: "sturdy-device-485320-s2.firebasestorage.app",
-  messagingSenderId: "467108248130",
-  appId: "1:467108248130:web:a40f601be2544a2c088bdb",
-  measurementId: "G-3NZ9TM8Y8C"
+ apiKey: "AIzaSyCk5xfYIT_-Ps4sFpKOIMiUUQjhD5WYtB8",
+    authDomain: "sturdy-device-485320-s2.firebaseapp.com",
+    projectId: "sturdy-device-485320-s2",
+    storageBucket: "sturdy-device-485320-s2.firebasestorage.app",
+    messagingSenderId: "467108248130",
+    appId: "1:467108248130:web:cd2412ef486f2673088bdb",
+    measurementId: "G-KY6JCNTTC1"
 };
 
 // Firestore document path to store the master CSV: "collection/docId"
@@ -1750,6 +1750,7 @@ refreshArchiveList();
 renderRecent();
 
 renderLastImportMeta();
+
 
 
 
