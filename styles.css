@@ -1,3 +1,5 @@
+/* styles.css */
+
 /* 1. Root Variables and Theme */
 :root {
   --bg: #0f172a;
@@ -34,7 +36,7 @@ body {
 /* Screens take available vertical space */
 .screen {
   display: none;
-  padding: 16px 16px 120px; /* slightly more bottom padding for larger icons */
+  padding: 16px 16px 120px;
   flex: 1 1 auto;
 }
 .screen.active { display: block; }
@@ -59,7 +61,7 @@ body {
 @media (max-width: 520px) { .buttons-grid.two-cols-three-rows { grid-template-columns: 1fr; } }
 
 .decade-btn.tall { min-height: 96px; }
-.decade-btn {
+.decade-btn, .random-btn {
   border: none;
   color: white;
   padding: 14px 16px;
@@ -67,18 +69,18 @@ body {
   cursor: pointer;
   box-shadow: var(--shadow);
   transition: transform 0.08s ease, filter 0.2s ease;
-  font-size: 16px; /* word labels */
+  font-size: 16px;
   line-height: 1.2;
 }
-.decade-btn:hover { transform: translateY(-1px); filter: brightness(1.05); }
+.decade-btn:hover, .random-btn:hover { transform: translateY(-1px); filter: brightness(1.05); }
 
-/* Decade button colors (replacing genre colors) */
-.decade-70s { background: #ef4444; }   /* red */
-.decade-80s { background: #f59e0b; }   /* amber */
-.decade-90s { background: #10b981; }   /* green */
-.decade-2000s { background: #3b82f6; } /* blue */
-.decade-2010s { background: #a855f7; } /* purple */
-.decade-2020s { background: #6b7280; } /* slate */
+.decade-70s { background: #ef4444; }
+.decade-80s { background: #f59e0b; }
+.decade-90s { background: #10b981; }
+.decade-2000s { background: #3b82f6; }
+.decade-2010s-plus { background: #a855f7; }
+
+.random-btn { background: #0b2a47; color: #cfe3ff; }
 
 /* 5. Centered Result Card */
 .center-wrap { display: flex; justify-content: center; margin: 16px 0 24px; }
@@ -106,7 +108,7 @@ body {
   flex-direction: column;
   gap: 4px;
   flex: 1 1 auto;
-  min-width: 0; /* allow ellipsis */
+  min-width: 0;
 }
 .result-card .title { font-weight: 700; }
 .result-card .subtitle { color: var(--muted); font-size: 0.95rem; }
@@ -114,15 +116,15 @@ body {
 #nowPlayingText {
   overflow: hidden;
   text-overflow: ellipsis;
-  white-space: nowrap; /* keep title on one line with ellipsis */
+  white-space: nowrap;
 }
 
 /* 6. Copy Button */
 .copy-btn {
-  display: inline-flex !important;  /* ensure it renders */
+  display: inline-flex !important;
   align-items: center;
   justify-content: center;
-  flex: 0 0 auto;                /* don't shrink away */
+  flex: 0 0 auto;
   min-width: 88px;
   min-height: 36px;
   padding: 8px 12px;
@@ -131,29 +133,14 @@ body {
   background: transparent;
   color: var(--text);
   cursor: pointer;
-  z-index: 2;                /* stay above background layers */
-}
-
-/* Optional: icon-style copy button matching green circles */
-.copy-btn.circle {
-  width: 66px;     /* match your enlarged circle icons */
-  height: 66px;
-  min-width: 66px;
-  min-height: 66px;
-  padding: 0;
-  border-radius: 50%;
-  background: var(--icon-green-bg, #16a34a);
-  color: #fff;
-  border: none;
-  font-size: 30px;
-  line-height: 1;
+  z-index: 2;
 }
 
 /* On very small screens, allow wrapping so the button doesn’t get squeezed */
 @media (max-width: 420px) {
   .result-card { flex-wrap: wrap; }
   .result-card .meta { flex-basis: 100%; }
-  .copy-btn { margin-left: auto; } /* keep it on the right when wrapping */
+  .copy-btn { margin-left: auto; }
 }
 
 /* 7. Form Card and inputs */
@@ -245,17 +232,17 @@ input:focus, select:focus { outline: 2px solid var(--accent2); }
   bottom: 0;
   left: 0;
   right: 0;
-  padding: 16px 20px calc(env(safe-area-inset-bottom) + 16px); /* larger padding for bigger icons */
+  padding: 16px 20px calc(env(safe-area-inset-bottom) + 16px);
   background: linear-gradient(180deg, transparent, rgba(17, 24, 39, 0.85));
   backdrop-filter: blur(6px);
   border-top: 1px solid #1f2937;
   z-index: 10;
 }
 
-/* 10. Circle icons: simple green circles with symbol — 50% larger */
+/* 10. Circle icons */
 .circle-icon {
-  width: 66px;   /* was 44px */
-  height: 66px;  /* was 44px */
+  width: 66px;
+  height: 66px;
   border-radius: 50%;
   border: none;
   display: inline-flex;
@@ -269,51 +256,7 @@ input:focus, select:focus { outline: 2px solid var(--accent2); }
 .circle-green { background: var(--icon-green-bg); color: #fff; }
 
 .icon-label {
-  font-size: 30px; /* was 20px */
+  font-size: 30px;
   font-weight: 700;
   line-height: 1;
 }
-
-.enrichment-box {
-  max-width: 640px;
-  width: 50%;
-  min-width: 320px;
-  margin: 8px auto 16px auto;
-  background: var(--card);
-  border: 1px solid #1f2937;
-  border-radius: 10px;
-  box-shadow: var(--shadow);
-  padding: 12px;
-}
-@media (max-width: 640px) { .enrichment-box { width: 90%; } }
-.enrichment .row { margin: 6px 0; }
-.enrichment .lyrics {
-  white-space: pre-wrap;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
-  font-size: 0.9rem;
-  background: #0b1221;
-  border: 1px solid #334155;
-  border-radius: 8px;
-  padding: 8px;
-  max-height: 240px;
-  overflow: auto;
-}
-
-/* Bind CSV circle state variations */
-.bind-btn.circle-icon { border: 2px solid transparent; }
-.bind-btn.bind-not-bound.circle-icon { box-shadow: 0 0 0 2px #f59e0b inset; }
-.bind-btn.bind-bound.circle-icon { box-shadow: 0 0 0 2px #16a34a inset; }
-
-/* Preserve non-icon bind styles for other screens if needed */
-.bind-btn {
-  border: 2px dashed #f59e0b;
-  background: #1e293b;
-  color: #fbbf24;
-  font-weight: 700;
-  padding: 8px 12px;
-  border-radius: 8px;
-  cursor: pointer;
-}
-.bind-btn:hover { filter: brightness(1.05); }
-.bind-btn.bind-bound { border-color: #16a34a; background: #0f2f1d; color: #34d399; }
-.bind-btn.bind-not-bound { border-color: #f59e0b; background: #1e293b; color: #fbbf24; }
