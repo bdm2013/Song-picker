@@ -209,6 +209,125 @@ navCurrentBtn?.addEventListener("click", () => {
   showScreen("add");
 });
 
+/* ---------- Playback Integration (Apple Music + YouTube Music) ---------- */
+
+const YT_API_KEY = "AIzaSyDTKFXhB4ddJJdafUjMqVrNqjTKBd2T_tU";
+
+function isIphoneLayout() {
+  return window.matchMedia("(max-width: 768px)").matches;
+}
+
+function buildYouTubeQueries({ title, artist }) {
+  const base = `${title} ${artist}`.trim();
+  return [`${base} lyrics`, `${base} audio`, base];
+}
+
+const PlaybackManager = (() => {
+  const TAB_TARGET = "player-tab";
+
+  async function playSong({ title, artist }) {
+    if (!title || !artist) return;
+
+    if (provider === "ytm") {
+      if (isIphoneLayout()) {
+        playYouTubeMusicSearch({ title, artist });
+        return;
+      }
+      await playYouTubeMusicViaApi({ title, artist });
+      return;
+    }
+
+    playAppleMusic({ title, artist });
+  }
+
+  function playAppleMusic({ title, artist }) {
+    const query = encodeURIComponent(`${title} ${artist}`);
+    const isIOS = /iPhone|iPad|iPod/i.test(navigator.userAgent);
+
+    const url = isIOS
+      ? `music://music.apple.com/search?term=${query}`
+      : `https://music.apple.com/us/search?term=${query}`;
+
+    openInTab(url);
+    notify(`Opening "${title}" in Apple Music...`);
+  }
+
+  function playYouTubeMusicSearch({ title, artist }) {
+    const url = `https://music.youtube.com/search?q=${encodeURIComponent(`${title} ${artist}`)}`;
+    notify(`Opening "${title}" in YouTube Music...`);
+    if (isIphoneLayout()) window.location.href = url;
+    else openInTab(url);
+  }
+
+  async function playYouTubeMusicViaApi({ title, artist }) {
+    const fallbackSearchUrl = `https://music.youtube.com/search?q=${encodeURIComponent(`${title} ${artist}`)}`;
+    const win = openInTab(fallbackSearchUrl);
+
+    notify(`Searching YouTube Music for "${title}"...`);
+
+    const queries = buildYouTubeQueries({ title, artist });
+
+    let videoId = null;
+    for (let i = 0; i < queries.length; i++) {
+      videoId = await findYouTubeVideoId(queries[i]);
+      if (videoId) break;
+    }
+
+    if (videoId) {
+      const url = `https://music.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
+      navigateTab(win, url);
+      notify(`Opening "${title}" in YouTube Music...`);
+    } else {
+      notify("Could not find a direct match. Showing YouTube Music search results.");
+    }
+  }
+
+  function openInTab(url) {
+    const target = isIphoneLayout() ? "_self" : TAB_TARGET;
+    const win = window.open(url, target);
+    if (!win) {
+      alert("Please allow popups for this site to open the music player.");
+      return null;
+    }
+    try { win.focus(); } catch (_) {}
+    return win;
+  }
+
+  function navigateTab(win, url) {
+    try {
+      if (win && !win.closed) {
+        win.location.href = url;
+        win.focus();
+        return;
+      }
+    } catch (_) {}
+    openInTab(url);
+  }
+
+  async function findYouTubeVideoId(query) {
+    if (!YT_API_KEY) return null;
+
+    const url = new URL("https://www.googleapis.com/youtube/v3/search");
+    url.searchParams.set("part", "snippet");
+    url.searchParams.set("q", query);
+    url.searchParams.set("type", "video");
+    url.searchParams.set("videoCategoryId", "10");
+    url.searchParams.set("maxResults", "1");
+    url.searchParams.set("key", YT_API_KEY);
+
+    try {
+      const resp = await fetch(url.toString());
+      if (!resp.ok) return null;
+      const data = await resp.json();
+      return data?.items?.[0]?.id?.videoId || null;
+    } catch {
+      return null;
+    }
+  }
+
+  return { playSong };
+})();
+
 /* ---------- Bucket buttons (includes Random) ---------- */
 
 bucketButtons.forEach(btn => {
@@ -1434,3 +1553,4 @@ refreshSongList();
 refreshArchiveList();
 renderRecent();
 renderLastImportMeta();
+
