@@ -17,25 +17,25 @@
       <header class="app-header">
         <h1>Song Picker</h1>
       </header>
-<div class="provider-toggle">
-  <label class="toggle">
-    <span>Apple Music</span>
-    <select id="providerSelect">
-      <option value="apple" selected>Apple Music</option>
-      <option value="ytm">YouTube Music</option>
-    </select>
-  </label>
-</div>
-      <!-- Genre Grid -->
-      <div class="buttons-grid two-cols-four-rows">
-        <button type="button" id="random-genre-btn" class="genre-btn random-btn tall" data-genre="Random">Random</button>
-        <button type="button" class="genre-btn tall genre-pop" data-genre="Pop">Pop</button>
-        <button type="button" class="genre-btn tall genre-country" data-genre="Country">Country</button>
-        <button type="button" class="genre-btn tall genre-rock" data-genre="Rock/Alt">Rock/Alt</button>
-        <button type="button" class="genre-btn tall genre-rnb" data-genre="R&B/HipHop">R&amp;B/HipHop</button>
-        <button type="button" class="genre-btn tall genre-other" data-genre="Other">Other</button>
-        <button type="button" class="genre-btn tall genre-tv" data-genre="Tv/Movie/Kids">Tv/Movie/Kids</button>
-        <button type="button" class="genre-btn tall genre-metal" data-genre="Metal/Hard Rock">Metal / Hard Rock</button>
+
+      <div class="provider-toggle">
+        <label class="toggle">
+          <span>Apple Music</span>
+          <select id="providerSelect">
+            <option value="apple" selected>Apple Music</option>
+            <option value="ytm">YouTube Music</option>
+          </select>
+        </label>
+      </div>
+
+      <!-- Decade Grid -->
+      <div class="buttons-grid two-cols-three-rows">
+        <button type="button" class="decade-btn tall decade-70s" data-decade="1970s">1970s</button>
+        <button type="button" class="decade-btn tall decade-80s" data-decade="1980s">1980s</button>
+        <button type="button" class="decade-btn tall decade-90s" data-decade="1990s">1990s</button>
+        <button type="button" class="decade-btn tall decade-2000s" data-decade="2000s">2000s</button>
+        <button type="button" class="decade-btn tall decade-2010s" data-decade="2010s">2010s</button>
+        <button type="button" class="decade-btn tall decade-2020s" data-decade="2020s">2020s</button>
       </div>
 
       <!-- Selected Song Box -->
@@ -43,9 +43,7 @@
         <div id="result" class="result-card" aria-live="polite">
           <div class="meta">
             <div id="nowPlayingText" class="title">No song selected yet</div>
-            <div class="subtitle">
-              <span id="nowPlayingGenrePill" class="badge genre-pill" hidden>Genre</span>
-            </div>
+            <div class="subtitle"></div>
           </div>
           <button type="button" id="copySongBtn" class="copy-btn" title="Copy" aria-label="Copy">Copy</button>
         </div>
@@ -93,16 +91,16 @@
 
     <!-- Add Song / Current Songs Screen -->
     <section id="add-screen" class="screen">
-     <header class="app-header header-with-toggle">
-  <h1>Song Picker</h1>
+      <header class="app-header header-with-toggle">
+        <h1>Song Picker</h1>
 
-  <div class="provider-toggle" aria-label="Playback provider">
-    <select id="providerSelect" title="Playback Provider" aria-label="Playback Provider">
-      <option value="apple" selected>Apple</option>
-      <option value="ytm">YouTube</option>
-    </select>
-  </div>
-</header>
+        <div class="provider-toggle" aria-label="Playback provider">
+          <select id="providerSelect" title="Playback Provider" aria-label="Playback Provider">
+            <option value="apple" selected>Apple</option>
+            <option value="ytm">YouTube</option>
+          </select>
+        </div>
+      </header>
 
       <div class="form-card">
         <form id="song-form" novalidate>
@@ -119,20 +117,6 @@
           <div class="form-row">
             <label for="year">Year</label>
             <input type="number" id="year" name="year" min="1900" max="2100" />
-          </div>
-
-          <div class="form-row">
-            <label for="genre">Genre</label>
-            <select id="genre" name="genre" required>
-              <option value="">Select a genre</option>
-              <option>Pop</option>
-              <option>Country</option>
-              <option>Rock/Alt</option>
-              <option>R&B/HipHop</option>
-              <option>Other</option>
-              <option>Tv/Movie/Kids</option>
-              <option>Metal/Hard Rock</option>
-            </select>
           </div>
 
           <div class="form-actions">
@@ -203,6 +187,6 @@
   <!-- app.js is now a module because it includes Firebase ESM imports -->
   <script type="module" src="app.js"></script>
 </body>
-
 </html>
+
 
