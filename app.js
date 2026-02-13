@@ -6,17 +6,15 @@
 
 /* ---------- Constants ---------- */
 
-const GENRES = [
-  "Random",
-  "Pop",
-  "Country",
-  "Rock/Alt",
-  "R&B/HipHop",
-  "Other",
-  "Tv/Movie/Kids",
-  "Metal/Hard Rock"
+const DECADES = [
+  "1970s",
+  "1980s",
+  "1990s",
+  "2000s",
+  "2010s",
+  "2020s"
 ];
-const DISPLAY_GENRES = GENRES.filter(g => g !== "Random");
+const DISPLAY_DECADES = DECADES.slice();
 
 const STORAGE_KEY = "songPicker.songs";
 const ARCHIVE_KEY = "songPicker.archive";
@@ -33,13 +31,13 @@ const RECENT_MAX = 4;
 const FIREBASE_ENABLED = true;
 
 const firebaseConfig = {
- apiKey: "AIzaSyCk5xfYIT_-Ps4sFpKOIMiUUQjhD5WYtB8",
-    authDomain: "sturdy-device-485320-s2.firebaseapp.com",
-    projectId: "sturdy-device-485320-s2",
-    storageBucket: "sturdy-device-485320-s2.firebasestorage.app",
-    messagingSenderId: "467108248130",
-    appId: "1:467108248130:web:cd2412ef486f2673088bdb",
-    measurementId: "G-KY6JCNTTC1"
+  apiKey: "AIzaSyCk5xfYIT_-Ps4sFpKOIMiUUQjhD5WYtB8",
+  authDomain: "sturdy-device-485320-s2.firebaseapp.com",
+  projectId: "sturdy-device-485320-s2",
+  storageBucket: "sturdy-device-485320-s2.firebasestorage.app",
+  messagingSenderId: "467108248130",
+  appId: "1:467108248130:web:cd2412ef486f2673088bdb",
+  measurementId: "G-KY6JCNTTC1"
 };
 
 // Firestore document path to store the master CSV: "collection/docId"
@@ -47,9 +45,7 @@ const FIREBASE_DOC_PATH = "songs/christian";
 
 /* Firebase SDK imports (ESM) */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import {
-  getFirestore, doc, getDoc, setDoc, serverTimestamp
-} from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
 /* ---------- Firebase init ---------- */
 
@@ -82,7 +78,7 @@ let archive = loadArchive();
 let recent = loadRecent();
 
 let isBulkOperationInProgress = false;
-let importMode = "merge"; 
+let importMode = "merge";
 let provider = loadProvider(); // "apple" | "ytm"
 
 function loadProvider() {
@@ -97,8 +93,8 @@ function saveProvider(v) {
 /* ---------- Filter state ---------- */
 
 const filters = {
-  current: { query: "", genre: "" },
-  archive: { query: "", genre: "" }
+  current: { query: "", decade: "" },
+  archive: { query: "", decade: "" }
 };
 
 /* ---------- Elements ---------- */
@@ -112,15 +108,21 @@ const screens = {
 const resultEl = document.getElementById("result");
 const recentListEl = document.getElementById("recentList");
 
-// Main bar buttons
-const providerSelect = document.getElementById("providerSelect");
-if (providerSelect) {
-  providerSelect.value = provider;
-  providerSelect.addEventListener("change", () => {
-    saveProvider(providerSelect.value);
+// Provider selects (UPDATED IDS)
+const providerSelectMain = document.getElementById("providerSelectMain");
+const providerSelectAdd = document.getElementById("providerSelectAdd");
+
+[providerSelectMain, providerSelectAdd].forEach(sel => {
+  if (!sel) return;
+  sel.value = provider;
+  sel.addEventListener("change", () => {
+    saveProvider(sel.value);
+    if (providerSelectMain) providerSelectMain.value = provider;
+    if (providerSelectAdd) providerSelectAdd.value = provider;
     notify(`Playback: ${provider === "ytm" ? "YouTube Music" : "Apple Music"}`);
   });
-}
+});
+
 const addSongNavBtn = document.getElementById("add-song-nav");
 const importCsvBtn = document.getElementById("import-csv-btn");
 const importReplaceBtn = document.getElementById("import-replace-btn");
@@ -129,8 +131,8 @@ const firebasePullBtn = document.getElementById("firebase-pull-btn");
 const firebasePushBtn = document.getElementById("firebase-push-btn");
 const importCsvFileInput = document.getElementById("import-csv-file");
 
-// Genre grid + copy
-const genreButtons = Array.from(document.querySelectorAll(".genre-btn"));
+// Decade grid + copy (UPDATED)
+const decadeButtons = Array.from(document.querySelectorAll(".decade-btn"));
 const copySongBtn = document.getElementById("copySongBtn");
 
 // Add screen
@@ -165,29 +167,28 @@ const importReportTarget = (() => {
   leftActions.appendChild(el);
   return el;
 })();
-/* ---------- Core helpers that were missing ---------- */
 
-function validateSong({ artist, title, year, genre }) {
+/* ---------- Decade helpers ---------- */
+
+function decadeFromYear(year) {
+  if (!Number.isFinite(year)) return "";
+  if (year >= 1970 && year <= 1979) return "1970s";
+  if (year >= 1980 && year <= 1989) return "1980s";
+  if (year >= 1990 && year <= 1999) return "1990s";
+  if (year >= 2000 && year <= 2009) return "2000s";
+  if (year >= 2010 && year <= 2019) return "2010s";
+  if (year >= 2020 && year <= 2029) return "2020s";
+  return "";
+}
+
+function validateSong({ artist, title, year }) {
   const errs = [];
   if (!artist) errs.push("Artist is required.");
   if (!title) errs.push("Song title is required.");
   if (year != null) {
     if (!Number.isFinite(year) || year < 1900 || year > 2100) errs.push("Year must be between 1900 and 2100.");
   }
-  if (!DISPLAY_GENRES.includes(genre)) errs.push("Genre must be selected.");
   return errs;
-}
-
-function genreClass(genre) {
-  const key = String(genre || "").toLowerCase();
-  const simple = key.replace(/\s+/g, "");
-  if (simple.includes("pop")) return "genre-pop";
-  if (simple.includes("country")) return "genre-country";
-  if (simple.includes("rock/alt") || key === "rock" || simple.includes("alt")) return "genre-rock";
-  if (simple.includes("r&b") || simple.includes("hiphop") || simple.includes("hip-hop")) return "genre-rnb";
-  if (simple.includes("tv") || simple.includes("movie") || simple.includes("kids")) return "genre-tv";
-  if (simple.includes("metal")) return "genre-metal";
-  return "genre-other";
 }
 
 function randomItem(arr) {
@@ -269,38 +270,31 @@ navCurrentBtn?.addEventListener("click", () => {
   showScreen("add");
 });
 
-/* ---------- Genre buttons ---------- */
+/* ---------- Decade buttons ---------- */
 
-genreButtons.forEach(btn => {
+decadeButtons.forEach(btn => {
   btn.addEventListener("click", () => {
-    const genre = btn.dataset.genre;
-    if (genre === "Random") {
-      const genresWithSongs = DISPLAY_GENRES.filter(g => songs.some(s => s.genre === g));
-      if (genresWithSongs.length === 0) {
-        renderResult(null, "No songs yet. Add or import some!");
-        return;
-      }
-      pickAndArchiveForGenre(randomItem(genresWithSongs));
-    } else {
-      pickAndArchiveForGenre(genre);
-    }
+    const decade = btn.dataset.decade;
+    pickAndArchiveForDecade(decade);
   });
 });
 
 /* ---------- Pick and archive ---------- */
 
-async function pickAndArchiveForGenre(genre) {
-  const pool = songs.filter(s => s.genre === genre);
+async function pickAndArchiveForDecade(decade) {
+  const pool = songs.filter(s => decadeFromYear(s.year) === decade);
+
   if (pool.length === 0) {
-    renderResult(null, `No songs in ${genre} yet. Add or import some!`);
+    renderResult(null, `No songs in ${decade} yet (songs need a Year). Add or import some!`);
     return;
   }
 
   const song = randomItem(pool);
   renderResultWithDelay(song, 500);
 
- try { await PlaybackManager.playSong(song); } catch (err) { console.warn("Playback error", err); notify(err?.message || "Playback failed."); }
-   
+  try { await PlaybackManager.playSong(song); }
+  catch (err) { console.warn("Playback error", err); notify(err?.message || "Playback failed."); }
+
   pushRecent(song);
   renderRecent();
 
@@ -731,9 +725,8 @@ songForm?.addEventListener("submit", async (e) => {
   const artistInput = normalizeText(String(formData.get("artist") || "")).trim();
   const titleInput = normalizeText(String(formData.get("title") || "")).trim();
   const year = normalizeYearOptional(formData.get("year"));
-  const genre = String(formData.get("genre") || "");
 
-  const errors = validateSong({ artist: artistInput, title: titleInput, year, genre });
+  const errors = validateSong({ artist: artistInput, title: titleInput, year });
   if (errors.length) {
     alert("Please fix:\n\n" + errors.join("\n"));
     return;
@@ -750,7 +743,8 @@ songForm?.addEventListener("submit", async (e) => {
     return;
   }
 
-  const newSong = { id: makeId(), artist: artistInput, title: titleInput, year, genre };
+  const decade = decadeFromYear(year);
+  const newSong = { id: makeId(), artist: artistInput, title: titleInput, year, decade };
   songs.push(newSong);
   saveSongs(songs);
   songForm.reset();
@@ -758,7 +752,8 @@ songForm?.addEventListener("submit", async (e) => {
   showScreen("main");
 
   const yearText = year != null ? `(${year})` : "";
-  renderResult(null, `Added: ${titleInput} by ${artistInput}${yearText} in ${genre}`);
+  const decadeText = decade ? ` in ${decade}` : "";
+  renderResult(null, `Added: ${titleInput} by ${artistInput}${yearText}${decadeText}`);
 });
 
 /* ---------- Playback Integration (Apple Music + YouTube Music) ---------- */
@@ -771,32 +766,26 @@ function isIphoneLayout() {
 }
 
 /**
- * Build YouTube queries based on genre.
- * - Tv/Movie/Kids: ONLY "Title Artist"
- * - Others: include variants, ending with plain "Title Artist"
+ * Build YouTube queries.
+ * (No longer based on genre; just use Title + Artist variants.)
  */
-function buildYouTubeQueries({ title, artist, genre }) {
+function buildYouTubeQueries({ title, artist }) {
   const base = `${title} ${artist}`.trim();
-  const isTvMovieKids = /tv|movie|kids/i.test(String(genre || ""));
-  if (isTvMovieKids) return [base];
   return [`${base} lyrics`, `${base} audio`, base];
 }
 
 const PlaybackManager = (() => {
   const TAB_TARGET = "player-tab"; // reuse same external tab
 
-  async function playSong({ title, artist, genre }) {
+  async function playSong({ title, artist }) {
     if (!title || !artist) return;
 
     if (provider === "ytm") {
-      // iPhone layout: match Apple Music behavior (open search immediately; no API call)
       if (isIphoneLayout()) {
         playYouTubeMusicSearch({ title, artist });
         return;
       }
-
-      // Desktop layout: use API to find best match, then open direct watch URL
-      await playYouTubeMusicViaApi({ title, artist, genre });
+      await playYouTubeMusicViaApi({ title, artist });
       return;
     }
 
@@ -817,20 +806,18 @@ const PlaybackManager = (() => {
 
   function playYouTubeMusicSearch({ title, artist }) {
     const url = `https://music.youtube.com/search?q=${encodeURIComponent(`${title} ${artist}`)}`;
-    openInTab(url);
     notify(`Opening "${title}" in YouTube Music...`);
-     if (isIphoneLayout()) window.location.href = url;
-else openInTab(url);
+    if (isIphoneLayout()) window.location.href = url;
+    else openInTab(url);
   }
 
-  async function playYouTubeMusicViaApi({ title, artist, genre }) {
-    // Open something immediately to reduce popup blocking (still best practice)
+  async function playYouTubeMusicViaApi({ title, artist }) {
     const fallbackSearchUrl = `https://music.youtube.com/search?q=${encodeURIComponent(`${title} ${artist}`)}`;
     const win = openInTab(fallbackSearchUrl);
 
     notify(`Searching YouTube Music for "${title}"...`);
 
-    const queries = buildYouTubeQueries({ title, artist, genre });
+    const queries = buildYouTubeQueries({ title, artist });
 
     let videoId = null;
     for (let i = 0; i < queries.length; i++) {
@@ -848,9 +835,7 @@ else openInTab(url);
   }
 
   function openInTab(url) {
-    // Use _blank on iPhone layout to behave more like Apple Music (new tab handoff feels more consistent)
     const target = isIphoneLayout() ? "_self" : TAB_TARGET;
-
     const win = window.open(url, target);
     if (!win) {
       alert("Please allow popups for this site to open the music player.");
@@ -902,6 +887,7 @@ else openInTab(url);
 
   return { playSong };
 })();
+
 /* ---------- Filtering helpers ---------- */
 
 function injectFilterControls({ containerSelector, scope, onChange }) {
@@ -935,23 +921,23 @@ function injectFilterControls({ containerSelector, scope, onChange }) {
 
   const anyOpt = document.createElement("option");
   anyOpt.value = "";
-  anyOpt.textContent = "All genres";
+  anyOpt.textContent = "All decades";
   select.appendChild(anyOpt);
 
-  DISPLAY_GENRES.forEach(g => {
+  DISPLAY_DECADES.forEach(d => {
     const opt = document.createElement("option");
-    opt.value = g;
-    opt.textContent = g;
+    opt.value = d;
+    opt.textContent = d;
     select.appendChild(opt);
   });
-  select.value = filters[scope].genre;
+  select.value = filters[scope].decade;
 
   search.addEventListener("input", () => {
     filters[scope].query = search.value.trim();
     onChange?.();
   });
   select.addEventListener("change", () => {
-    filters[scope].genre = select.value;
+    filters[scope].decade = select.value;
     onChange?.();
   });
 
@@ -966,15 +952,19 @@ function injectFilterControls({ containerSelector, scope, onChange }) {
 }
 
 function applyFilters(list, scope) {
-  const { query, genre } = filters[scope];
+  const { query, decade } = filters[scope];
   const q = query.toLowerCase();
+
   return list.filter(s => {
-    const matchesGenre = !genre || s.genre === genre;
+    const sDecade = decadeFromYear(s.year);
+    const matchesDecade = !decade || sDecade === decade;
+
     const matchesQuery =
       !q ||
       String(s.title || "").toLowerCase().includes(q) ||
       String(s.artist || "").toLowerCase().includes(q);
-    return matchesGenre && matchesQuery;
+
+    return matchesDecade && matchesQuery;
   });
 }
 
@@ -992,14 +982,13 @@ function renderResultWithDelay(song, delayMs = 500) {
   if (!resultEl) return;
   if (!song) return renderResult(null, "No selection");
 
-  const { title, artist, genre, year } = song;
+  const { title, artist, year } = song;
   const yearText = year != null ? `(${year})` : "";
 
-  const genreHtml = `<span id="nowPlayingGenrePill" class="badge genre-pill ${genreClass(genre)}">${escapeHtml(genre)}</span>`;
   resultEl.innerHTML = `
     <div class="meta">
       <div id="nowPlayingText" class="title" style="visibility:hidden;"></div>
-      <div class="subtitle">${genreHtml}</div>
+      <div class="subtitle"></div>
     </div>
   `;
 
@@ -1021,26 +1010,18 @@ function renderResult(song, message) {
     resultEl.innerHTML =
       '<div class="meta">' +
         '<div class="title">' + escapeHtml(message || "No selection") + '</div>' +
-        '<div class="subtitle">Use the genre grid to pick a song.</div>' +
+        '<div class="subtitle">Use the decade buttons to pick a song.</div>' +
       '</div>';
     return;
   }
-   function openYouTubeMusicByVideoId(videoId) {
-  // YouTube Music can play a YouTube video ID
-  // Most reliable: open the music.youtube.com watch URL
-  const url = `https://music.youtube.com/watch?v=${encodeURIComponent(videoId)}`;
-  window.open(url, "_blank");
-}
 
-  var yearText = (song.year != null) ? "(" + song.year + ")" : "";
-  var text = escapeHtml(song.title) + " — " + escapeHtml(song.artist) + escapeHtml(yearText);
+  const yearText = (song.year != null) ? "(" + song.year + ")" : "";
+  const text = escapeHtml(song.title) + " — " + escapeHtml(song.artist) + escapeHtml(yearText);
 
   resultEl.innerHTML =
     '<div class="meta">' +
       '<div id="nowPlayingText" class="title">' + text + '</div>' +
-      '<div class="subtitle">' +
-        '<span id="nowPlayingGenrePill" class="badge genre-pill ' + genreClass(song.genre) + '">' + escapeHtml(song.genre) + '</span>' +
-      '</div>' +
+      '<div class="subtitle"></div>' +
     '</div>';
 }
 
@@ -1048,7 +1029,7 @@ function refreshSongList() {
   if (currentCountsEl) currentCountsEl.innerHTML = renderCounts(songs);
   if (!songListEl) return;
 
-  var filtered = applyFilters(songs, "current");
+  const filtered = applyFilters(songs, "current");
   if (filtered.length === 0) {
     songListEl.innerHTML = "<li>No songs match your filter.</li>";
     return;
@@ -1056,12 +1037,14 @@ function refreshSongList() {
 
   songListEl.innerHTML = filtered
     .map(function(s) {
-      var yearText = (s.year != null) ? "(" + s.year + ")" : "";
+      const yearText = (s.year != null) ? "(" + s.year + ")" : "";
+      const decade = decadeFromYear(s.year);
+      const decadeBadge = decade ? ('<span class="count-badge">' + escapeHtml(decade) + "</span>") : "";
       return '<li>' +
         '<div class="item-row">' +
           '<div class="item-meta">' +
             '<span class="title">' + escapeHtml(s.title) + ' — ' + escapeHtml(s.artist) + escapeHtml(yearText) + '</span>' +
-            '<span class="badge genre-pill ' + genreClass(s.genre) + '">' + escapeHtml(s.genre) + '</span>' +
+            decadeBadge +
           '</div>' +
           '<div class="actions">' +
             '<button type="button" class="icon-btn" data-action="archive" data-id="' + escapeHtml(String(s.id)) + '">Archive</button>' +
@@ -1077,7 +1060,7 @@ function refreshArchiveList() {
   if (archiveCountsEl) archiveCountsEl.innerHTML = renderCounts(archive);
   if (!archiveListEl) return;
 
-  var filtered = applyFilters(archive, "archive");
+  const filtered = applyFilters(archive, "archive");
   if (filtered.length === 0) {
     archiveListEl.innerHTML = "<li>No archived songs match your filter.</li>";
     return;
@@ -1085,12 +1068,14 @@ function refreshArchiveList() {
 
   archiveListEl.innerHTML = filtered
     .map(function(s) {
-      var yearText = (s.year != null) ? "(" + s.year + ")" : "";
+      const yearText = (s.year != null) ? "(" + s.year + ")" : "";
+      const decade = decadeFromYear(s.year);
+      const decadeBadge = decade ? ('<span class="count-badge">' + escapeHtml(decade) + "</span>") : "";
       return '<li>' +
         '<div class="item-row">' +
           '<div class="item-meta">' +
             '<span class="title">' + escapeHtml(s.title) + ' — ' + escapeHtml(s.artist) + escapeHtml(yearText) + '</span>' +
-            '<span class="badge genre-pill ' + genreClass(s.genre) + '">' + escapeHtml(s.genre) + '</span>' +
+            decadeBadge +
           '</div>' +
           '<div class="actions">' +
             '<button type="button" class="icon-btn" data-action="restore" data-id="' + escapeHtml(String(s.id)) + '">Return</button>' +
@@ -1103,17 +1088,20 @@ function refreshArchiveList() {
 }
 
 function renderCounts(list) {
-  const counts = Object.fromEntries(DISPLAY_GENRES.map(function(g) { return [g, 0]; }));
-  for (var i = 0; i < list.length; i++) {
-    var s = list[i];
-    if (counts[s.genre] !== undefined) counts[s.genre]++;
+  const counts = Object.fromEntries(DISPLAY_DECADES.map(function(d) { return [d, 0]; }));
+  for (let i = 0; i < list.length; i++) {
+    const s = list[i];
+    const d = decadeFromYear(s.year);
+    if (d && counts[d] !== undefined) counts[d]++;
   }
   const total = list.length;
-  const badges = DISPLAY_GENRES
-    .map(function(g) {
-      return '<span class="count-badge">' + g + ": " + counts[g] + "</span>";
+
+  const badges = DISPLAY_DECADES
+    .map(function(d) {
+      return '<span class="count-badge">' + d + ": " + counts[d] + "</span>";
     })
     .join(" ");
+
   return '<span class="count-badge">Total: ' + total + "</span> " + badges;
 }
 
@@ -1140,7 +1128,7 @@ function loadRecent() {
 /* ---------- Recent ---------- */
 
 function pushRecent(song) {
-  const entry = { artist: song.artist, title: song.title, genre: song.genre, year: song.year ?? null };
+  const entry = { artist: song.artist, title: song.title, year: song.year ?? null };
   recent.unshift(entry);
   recent = recent.slice(0, RECENT_MAX);
   saveRecent(recent);
@@ -1154,12 +1142,11 @@ function renderRecent() {
   }
   recentListEl.innerHTML = recent
     .map(function (r, idx) {
-      var yearText = (r.year != null) ? "(" + r.year + ")" : "";
-      var safeIdx = String(idx);
+      const yearText = (r.year != null) ? "(" + r.year + ")" : "";
+      const safeIdx = String(idx);
       return '<div class="item-row">' +
         '<div class="item-meta">' +
           '<span class="title">' + escapeHtml(r.title) + " — " + escapeHtml(r.artist) + escapeHtml(yearText) + "</span>" +
-          '<span class="badge genre-pill ' + genreClass(r.genre) + '">' + escapeHtml(r.genre) + "</span>" +
         "</div>" +
         '<div class="actions">' +
           '<button type="button" class="icon-btn" data-action="recent-unarchive" data-id="' + safeIdx + '">Unarchive</button>' +
@@ -1238,7 +1225,8 @@ function normalizeSongStrings(s) {
     ...s,
     artist: normalizeText(s.artist),
     title: normalizeText(s.title),
-    genre: s.genre
+    year: s.year ?? null,
+    decade: s.decade || decadeFromYear(s.year)
   };
 }
 
@@ -1256,18 +1244,10 @@ function normalizeYearOptional(y) {
   return Number.isFinite(num) ? num : null;
 }
 
-function normalizeGenre(genreRaw) {
-  const g = String(genreRaw || "").trim();
-  if (DISPLAY_GENRES.includes(g)) return g;
-
-  const k = g.toLowerCase().replace(/\s+/g, "");
-  if (k.includes("pop")) return "Pop";
-  if (k.includes("country")) return "Country";
-  if (k.includes("rock") || k.includes("alt")) return "Rock/Alt";
-  if (k.includes("r&b") || k.includes("hiphop") || k.includes("hip-hop")) return "R&B/HipHop";
-  if (k.includes("tv") || k.includes("movie") || k.includes("kids")) return "Tv/Movie/Kids";
-  if (k.includes("metal")) return "Metal/Hard Rock";
-  return "Other";
+function normalizeDecade(_ignoredDecadeRaw, yearRaw) {
+  // Import rule: decade is ALWAYS derived from year (ignore any decade/genre column).
+  const y = (typeof yearRaw === "number") ? yearRaw : normalizeYearOptional(yearRaw);
+  return decadeFromYear(y) || "";
 }
 
 function makeId() {
@@ -1319,10 +1299,20 @@ function countReplacement(s) {
 /* ---------- CSV export + filename ---------- */
 
 function allSongsToCsv(currentList, archiveList, opts = {}) {
-  const header = ["Status", "Artist", "Title", "Year", "Genre"].join(CSV_DELIM);
-  const toRows = (status, list) => list.map(s =>
-    [ status, csvEscape(s.artist), csvEscape(s.title), s.year ?? "", csvEscape(s.genre) ].join(CSV_DELIM)
-  );
+  // Keep a 5th column for readability, but it is computed from Year.
+  const header = ["Status", "Artist", "Title", "Year", "Decade"].join(CSV_DELIM);
+
+  const toRows = (status, list) => list.map(s => {
+    const decade = decadeFromYear(s.year) || "";
+    return [
+      status,
+      csvEscape(s.artist),
+      csvEscape(s.title),
+      s.year ?? "",
+      csvEscape(decade)
+    ].join(CSV_DELIM);
+  });
+
   const body = [header, ...toRows("Current", currentList), ...toRows("Archive", archiveList)].join("\n");
   return opts.withBom ? "\uFEFF" + body : body;
 }
@@ -1376,10 +1366,10 @@ function parseCsvSmart(text, existingSongs = []) {
     };
   }
 
-  // Peek header
+  // Peek header (we accept lots of headers; we still only USE year/artist/title)
   const headerLine = lines[0] || "";
   const headerCols = parseDelimitedLine(headerLine, delim).map(s => s.toLowerCase());
-  const hasHeader = headerCols.some(c => ["status", "artist", "title", "year", "genre"].includes(c));
+  const hasHeader = headerCols.some(c => ["status", "artist", "title", "year", "decade", "genre"].includes(c));
 
   // Find first non-empty data line
   let firstDataIdx = hasHeader ? 1 : 0;
@@ -1393,7 +1383,7 @@ function parseCsvSmart(text, existingSongs = []) {
     firstCols.length >= 1 &&
     ["current", "archive"].includes(String(firstCols[0] || "").trim().toLowerCase());
 
-  // Route
+  // Route: status CSV vs plain CSV
   if ((hasHeader && headerCols.includes("status")) || looksStatusFirst) {
     const { currentRows, archiveRows, failedLines, duplicatesInCsv } = parseCsvWithStatus(lines.join("\n"));
     const validSongs = [...currentRows, ...archiveRows];
@@ -1406,7 +1396,6 @@ function parseCsvSmart(text, existingSongs = []) {
     };
   }
 
-  // Default
   const report = parseCsvWithReport(lines.join("\n"), existingSongs);
   return { ...report, __routed: "report" };
 }
@@ -1444,6 +1433,13 @@ function parseDelimitedLine(line, delim) {
   return out.map(s => s.trim());
 }
 
+/**
+ * Plain CSV import (no Status column).
+ * Import rule: must have Year; decade is derived from Year.
+ * Accepts header or no-header.
+ *
+ * Expected no-header order: Artist, Title, Year, (ignored 4th col if present)
+ */
 function parseCsvWithReport(text, existingSongs = []) {
   const delim = detectDelimiter(text, CSV_DELIM);
   const lines = text.split(/\r?\n/);
@@ -1458,16 +1454,14 @@ function parseCsvWithReport(text, existingSongs = []) {
 
   const headerLine = lines[0] || "";
   const headerCols = parseDelimitedLine(headerLine, delim).map(s => s.toLowerCase());
-  const hasHeader = headerCols.some(c => ["artist", "title", "genre", "status", "year"].includes(c));
+  const hasHeader = headerCols.some(c => ["artist", "title", "year"].includes(c));
   const startIdx = hasHeader ? 1 : 0;
 
-  // Column indexes (default order if no header)
-  let idxArtist = 0, idxTitle = 1, idxYear = 2, idxGenre = 3;
+  let idxArtist = 0, idxTitle = 1, idxYear = 2;
   if (hasHeader) {
     idxArtist = headerCols.indexOf("artist");
     idxTitle  = headerCols.indexOf("title");
     idxYear   = headerCols.indexOf("year");
-    idxGenre  = headerCols.indexOf("genre");
   }
 
   const validSongs = [];
@@ -1479,8 +1473,7 @@ function parseCsvWithReport(text, existingSongs = []) {
   const keyOf = (s) => [
     String(s.artist || "").trim().toLowerCase(),
     String(s.title || "").trim().toLowerCase(),
-    s.year ?? "",
-    String(s.genre || "").trim().toLowerCase()
+    s.year ?? ""
   ].join("|");
   const existingSet = new Set(existingSongs.map(keyOf));
 
@@ -1496,13 +1489,9 @@ function parseCsvWithReport(text, existingSongs = []) {
       continue;
     }
 
-    const artistRaw = cols[idxArtist] ?? "";
-    const titleRaw  = cols[idxTitle] ?? "";
-    const yearRaw   = cols[idxYear] ?? "";
-    const genreRaw  = cols[idxGenre] ?? "";
-
-    const artist = String(artistRaw || "").trim();
-    const title  = String(titleRaw || "").trim();
+    const artist = String(cols[idxArtist] ?? "").trim();
+    const title  = String(cols[idxTitle] ?? "").trim();
+    const yearRaw = cols[idxYear] ?? "";
 
     const yearClean = String(yearRaw)
       .replace(/\u00A0/g, " ")
@@ -1510,33 +1499,35 @@ function parseCsvWithReport(text, existingSongs = []) {
       .trim();
     const year = normalizeYearOptional(yearClean);
 
-    const genre = normalizeGenre(genreRaw);
+    // REQUIRED
+    if (year == null) {
+      failedLines.push(rawLine);
+      continue;
+    }
 
-    const errors = validateSong({ artist, title, year, genre });
+    const errors = validateSong({ artist, title, year });
     if (errors.length > 0) {
       failedLines.push(rawLine);
       continue;
     }
 
-    const k = [artist.toLowerCase(), title.toLowerCase(), year ?? "", genre.toLowerCase()].join("|");
+    const k = [artist.toLowerCase(), title.toLowerCase(), year].join("|");
 
-    if (seenKeys.has(k)) {
-      duplicatesInCsv++;
-      continue;
-    }
+    if (seenKeys.has(k)) { duplicatesInCsv++; continue; }
     seenKeys.add(k);
 
-    if (existingSet.has(k)) {
-      duplicatesVsCurrent++;
-      continue;
-    }
+    if (existingSet.has(k)) { duplicatesVsCurrent++; continue; }
 
-    validSongs.push({ id: makeId(), artist, title, year, genre });
+    validSongs.push({ id: makeId(), artist, title, year, decade: decadeFromYear(year) });
   }
 
   return { validSongs, failedLines, duplicatesInCsv, duplicatesVsCurrent };
 }
 
+/**
+ * Status CSV import (Status, Artist, Title, Year, [ignored...])
+ * Import rule: must have Year; decade is derived from Year.
+ */
 function parseCsvWithStatus(text) {
   const delim = detectDelimiter(text, CSV_DELIM);
   const lines = text.split(/\r?\n/);
@@ -1551,22 +1542,20 @@ function parseCsvWithStatus(text) {
 
   const headerLine = lines[0] || "";
   const headerCols = parseDelimitedLine(headerLine, delim).map(s => s.toLowerCase());
+
   const hasHeader =
     headerCols.includes("status") &&
     headerCols.includes("artist") &&
-    headerCols.includes("title") &&
-    headerCols.includes("genre");
+    headerCols.includes("title");
 
   const startIdx = hasHeader ? 1 : 0;
 
-  // Indexes (default order if no header)
-  let idxStatus = 0, idxArtist = 1, idxTitle = 2, idxYear = 3, idxGenre = 4;
+  let idxStatus = 0, idxArtist = 1, idxTitle = 2, idxYear = 3;
   if (hasHeader) {
     idxStatus = headerCols.indexOf("status");
     idxArtist = headerCols.indexOf("artist");
     idxTitle  = headerCols.indexOf("title");
-    idxYear   = headerCols.indexOf("year");
-    idxGenre  = headerCols.indexOf("genre");
+    idxYear   = headerCols.indexOf("year"); // may be -1, we fallback below
   }
 
   const currentRows = [];
@@ -1588,15 +1577,12 @@ function parseCsvWithStatus(text) {
       continue;
     }
 
-    const statusRaw = cols[idxStatus] ?? "";
-    const artistRaw = cols[idxArtist] ?? "";
-    const titleRaw  = cols[idxTitle] ?? "";
-    const yearRaw   = idxYear >= 0 ? (cols[idxYear] ?? "") : "";
-    const genreRaw  = cols[idxGenre] ?? "";
+    const status = String(cols[idxStatus] ?? "").trim();
+    const artist = String(cols[idxArtist] ?? "").trim();
+    const title  = String(cols[idxTitle] ?? "").trim();
 
-    const status = String(statusRaw || "").trim();
-    const artist = String(artistRaw || "").trim();
-    const title  = String(titleRaw  || "").trim();
+    // If header exists but "year" column missing, fallback to position 4.
+    const yearRaw = (idxYear >= 0) ? (cols[idxYear] ?? "") : (cols[3] ?? "");
 
     const yearClean = String(yearRaw)
       .replace(/\u00A0/g, " ")
@@ -1604,23 +1590,24 @@ function parseCsvWithStatus(text) {
       .trim();
     const year = normalizeYearOptional(yearClean);
 
-    const genre = normalizeGenre(genreRaw);
+    // REQUIRED
+    if (year == null) {
+      failedLines.push(rawLine);
+      continue;
+    }
 
     const validStatus = (status === "Current" || status === "Archive");
-    const errors = validateSong({ artist, title, year, genre });
+    const errors = validateSong({ artist, title, year });
     if (!validStatus || errors.length > 0) {
       failedLines.push(rawLine);
       continue;
     }
 
-    const k = [status.toLowerCase(), artist.toLowerCase(), title.toLowerCase(), (year ?? ""), genre.toLowerCase()].join("|");
-    if (seenKeys.has(k)) {
-      duplicatesInCsv++;
-      continue;
-    }
+    const k = [status.toLowerCase(), artist.toLowerCase(), title.toLowerCase(), year].join("|");
+    if (seenKeys.has(k)) { duplicatesInCsv++; continue; }
     seenKeys.add(k);
 
-    const entry = { id: makeId(), artist, title, year, genre };
+    const entry = { id: makeId(), artist, title, year, decade: decadeFromYear(year) };
     if (status === "Current") currentRows.push(entry);
     else archiveRows.push(entry);
   }
@@ -1635,13 +1622,13 @@ function mergeImportedSongs(imported) {
     return [
       s.artist.trim().toLowerCase(),
       s.title.trim().toLowerCase(),
-      (s.year ?? ""),
-      s.genre.trim().toLowerCase()
+      (s.year ?? "")
     ].join("|");
   };
 
   const existing = new Set(songs.map(keyOf));
   let added = 0;
+
   for (let i = 0; i < imported.length; i++) {
     const s = imported[i];
     const k = keyOf(s);
@@ -1748,18 +1735,4 @@ function renderLastImportMeta() {
 refreshSongList();
 refreshArchiveList();
 renderRecent();
-
 renderLastImportMeta();
-
-
-
-
-
-
-
-
-
-
-
-
-
