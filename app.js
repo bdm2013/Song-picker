@@ -8,6 +8,16 @@
 
 const DECADES = ["Random", "1970s+1980s", "1990s", "2000s", "2010s", "2020s"];
 const DISPLAY_DECADES = DECADES.filter(d => d !== "Random");
+const DISPLAY_GENRES = [
+  "Pop",
+  "Country",
+  "Rock/Alt",
+  "R&B/HipHop",
+  "Other",
+  "Tv/Movie/Kids",
+  "Metal/Hard Rock"
+];
+
 
 const STORAGE_KEY = "songPicker.songs";
 const ARCHIVE_KEY = "songPicker.archive";
