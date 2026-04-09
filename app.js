@@ -35,10 +35,6 @@ const firebaseConfig = {
 
 const FIREBASE_DOC_PATH = "songs/christian";
 
-/* Firebase SDK imports (ESM) */
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-import { getFirestore, doc, getDoc, setDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
-
 /* Firebase SDK imports */
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
 import {
